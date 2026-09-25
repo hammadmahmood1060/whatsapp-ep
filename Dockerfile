@@ -1,25 +1,26 @@
 FROM ghcr.io/puppeteer/puppeteer:latest
 
-# Switch to root to install ffmpeg
+# Switch to root to install ffmpeg and prepare the directory
 USER root
 
 # Install ffmpeg
 RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
-# Switch back to the pptruser
-USER pptruser
+# Create the working directory and give the puppeteer user ownership
+RUN mkdir -p /app && chown -R pptruser:pptruser /app
 
-# Set the working directory
+# Switch back to the non-root user for security and to run npm
+USER pptruser
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files with the correct permissions
+COPY --chown=pptruser:pptruser package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Copy application code
-COPY . .
+# Copy the rest of the application code
+COPY --chown=pptruser:pptruser . .
 
 # Expose the port Render assigns
 EXPOSE 3000
