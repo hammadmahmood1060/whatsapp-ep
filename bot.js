@@ -150,7 +150,10 @@ async function downloadVideo(m3u8Url, outputPath) {
     });
 }
 
-client.on('message', async msg => {
+client.on('message_create', async msg => {
+    // Ignore status broadcasts
+    if (msg.from === 'status@broadcast') return;
+
     const text = msg.body.toLowerCase().trim();
     const sender = msg.from;
 
