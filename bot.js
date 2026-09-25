@@ -9,13 +9,19 @@ const path = require('path');
 // State to keep track of user interactions
 const userStates = {};
 
+// Determine correct Chrome executable path based on environment
+const macChromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const executablePath = fs.existsSync(macChromePath) 
+    ? macChromePath 
+    : process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable';
+
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
         // Required on some environments like Linux/Mac, to prevent permission issues
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
         // Use system Chrome on Mac, or the one provided by the Puppeteer Docker image on Render
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+        executablePath: executablePath
     }
 });
 
@@ -37,8 +43,8 @@ async function getLatestEpisodeInfo() {
     console.log("Launching browser to find the latest episode...");
     const browser = await puppeteer.launch({ 
         headless: 'new',
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        executablePath: executablePath,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     });
     
     try {
