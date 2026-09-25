@@ -11,18 +11,36 @@ const userStates = {};
 
 // Determine correct Chrome executable path based on environment
 const macChromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const executablePath = fs.existsSync(macChromePath) 
-    ? macChromePath 
-    : process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable';
+let executablePath = null;
+
+if (fs.existsSync(macChromePath)) {
+    executablePath = macChromePath;
+} else {
+    const linuxPaths = [
+        process.env.PUPPETEER_EXECUTABLE_PATH,
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
+    ];
+    for (const p of linuxPaths) {
+        if (p && fs.existsSync(p)) {
+            executablePath = p;
+            break;
+        }
+    }
+}
+
+const puppeteerConfig = {
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+};
+if (executablePath) {
+    puppeteerConfig.executablePath = executablePath;
+}
 
 const client = new Client({
     authStrategy: new LocalAuth(),
-    puppeteer: {
-        // Required on some environments like Linux/Mac, to prevent permission issues
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-        // Use system Chrome on Mac, or the one provided by the Puppeteer Docker image on Render
-        executablePath: executablePath
-    }
+    puppeteer: puppeteerConfig
 });
 
 client.on('qr', (qr) => {
@@ -41,11 +59,7 @@ async function getLatestEpisodeInfo() {
     let videoPageLink = null;
 
     console.log("Launching browser to find the latest episode...");
-    const browser = await puppeteer.launch({ 
-        headless: 'new',
-        executablePath: executablePath,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-    });
+    const browser = await puppeteer.launch(puppeteerConfig);
     
     try {
         const page = await browser.newPage();
