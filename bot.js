@@ -6,6 +6,16 @@ const ffmpeg = require('fluent-ffmpeg');
 const fs = require('fs');
 const path = require('path');
 
+// --- RENDER HEALTH CHECK SERVER ---
+// Start this first so Render sees the port open instantly!
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end('<h1>WhatsApp Bot is running!</h1><p><b>Note:</b> To scan the QR code and log in, you must check the <b>Logs</b> tab in your Render Dashboard, NOT this webpage.</p>');
+}).listen(PORT, () => {
+    console.log(`Server listening on port ${PORT} (required for Render)`);
+});
+
 // State to keep track of user interactions
 const userStates = {};
 
@@ -48,7 +58,12 @@ if (executablePath) {
 
 const client = new Client({
     authStrategy: new LocalAuth(),
-    puppeteer: puppeteerConfig
+    puppeteer: puppeteerConfig,
+    // Fixes the "Cannot link new device" error caused by WhatsApp Web updates
+    webVersionCache: {
+        type: 'remote',
+        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
+    }
 });
 
 client.on('qr', (qr) => {
@@ -197,12 +212,3 @@ client.on('message', async msg => {
 
 // Start the client
 client.initialize();
-
-// Create a simple HTTP server so Render (Web Services) doesn't mark the app as failed
-const PORT = process.env.PORT || 3000;
-http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end('<h1>WhatsApp Bot is running!</h1><p><b>Note:</b> To scan the QR code and log in, you must check the <b>Logs</b> tab in your Render Dashboard, NOT this webpage.</p>');
-}).listen(PORT, () => {
-    console.log(`Server listening on port ${PORT} (required for Render)`);
-});
