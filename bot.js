@@ -32,7 +32,15 @@ if (fs.existsSync(macChromePath)) {
 }
 
 const puppeteerConfig = {
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    args: [
+        '--no-sandbox', 
+        '--disable-setuid-sandbox', 
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu'
+    ]
 };
 if (executablePath) {
     puppeteerConfig.executablePath = executablePath;
@@ -54,15 +62,15 @@ client.on('ready', () => {
 });
 
 // Function to simulate scraping the ARY Plus website for the latest episode
-async function getLatestEpisodeInfo() {
+async function getLatestEpisodeInfo(client) {
     let m3u8Link = null;
     let videoPageLink = null;
 
-    console.log("Launching browser to find the latest episode...");
-    const browser = await puppeteer.launch(puppeteerConfig);
+    console.log("Opening new tab in existing browser to find the latest episode...");
     
     try {
-        const page = await browser.newPage();
+        // HUGE MEMORY FIX: Reuse the existing WhatsApp browser instead of launching a 2nd Chrome!
+        const page = await client.pupBrowser.newPage();
         
         // Go directly to the series page
         console.log("Fetching episode list...");
@@ -102,9 +110,7 @@ async function getLatestEpisodeInfo() {
         }
     } catch (err) {
         console.error("Error scraping ARY Plus:", err);
-    } finally {
-        await browser.close();
-    }
+    } 
 
     return { link: videoPageLink, m3u8: m3u8Link };
 }
@@ -143,7 +149,7 @@ client.on('message', async msg => {
     if (userStates[sender] && userStates[sender].step === 'ASK_FORMAT') {
         if (text === 'link') {
             await msg.reply('Fetching the latest link...');
-            const info = await getLatestEpisodeInfo();
+            const info = await getLatestEpisodeInfo(client);
             if (info.m3u8) {
                 await msg.reply(`Here is the direct video link to the latest episode:\n${info.m3u8}`);
             } else {
@@ -155,7 +161,7 @@ client.on('message', async msg => {
             await msg.reply('Fetching and downloading the video. This might take a few minutes (depending on size)...');
             
             try {
-                const info = await getLatestEpisodeInfo();
+                const info = await getLatestEpisodeInfo(client);
                 
                 if (info.m3u8) {
                     const tempVideoPath = path.join(__dirname, `latest_episode_${Date.now()}.mp4`);
@@ -195,8 +201,8 @@ client.initialize();
 // Create a simple HTTP server so Render (Web Services) doesn't mark the app as failed
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('WhatsApp Bot is running!');
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end('<h1>WhatsApp Bot is running!</h1><p><b>Note:</b> To scan the QR code and log in, you must check the <b>Logs</b> tab in your Render Dashboard, NOT this webpage.</p>');
 }).listen(PORT, () => {
     console.log(`Server listening on port ${PORT} (required for Render)`);
 });
